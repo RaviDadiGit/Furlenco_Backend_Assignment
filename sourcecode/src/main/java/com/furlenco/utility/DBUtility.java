@@ -2,11 +2,13 @@ package com.furlenco.utility;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.Executors;
 
 import com.furlenco.model.Student;
 
@@ -53,7 +55,7 @@ public class DBUtility {
 				student.setId(rs.getInt("id"));
 				student.setName(rs.getString("name"));
 				student.setClassNumber(rs.getInt("class"));
-				student.setAdmissionYear(rs.getString("admissionyear"));
+				student.setAdmissionYear(rs.getInt("admissionyear"));
 				student.setActive(rs.getBoolean("active"));
 				students.add(student);
 			}
@@ -72,14 +74,23 @@ public class DBUtility {
 	}
 
 	public static String buildQuery(String classNumber, boolean active,
-			String admissionYear, Integer id) {
+			Integer admissionYearBefore,Integer admissionYearAfter,Integer id) {
 		StringBuilder query = new StringBuilder("SELECT * FROM STUDENT");
-		if (admissionYear != null && !admissionYear.isEmpty()) {
+		if (admissionYearAfter != null) {
 			if (!query.toString().contains(Where_Condition)) {
 				query.append(Where_Condition);
 			}
-			query.append("ADMISSIONYEAR=");
-			query.append(admissionYear);
+			query.append("ADMISSIONYEAR >=");
+			query.append(admissionYearAfter);
+		}
+		if (admissionYearBefore != null) {
+			if (!query.toString().contains(Where_Condition)) {
+				query.append(Where_Condition);
+			}else {
+				query.append(" AND ");
+			}
+			query.append("ADMISSIONYEAR <=");
+			query.append(admissionYearBefore);
 		}
 		if (active) {
 			if (!query.toString().contains(Where_Condition)) {
@@ -96,12 +107,13 @@ public class DBUtility {
 				for (int i = 0; i < classSplit.length; i++) {
 					if (!query.toString().contains(Where_Condition)) {
 						query.append(Where_Condition);
-					} else {
-						query.append(" AND ");
-					}				
-					query.append("CLASS=");
+						query.append("CLASS IN ( ");
+					}
 					query.append(classSplit[i]);
+					query.append(", ");
 				}
+				query.deleteCharAt(query.length() - 2);
+				query.append(")");
 			} else {
 				if (!query.toString().contains(Where_Condition)) {
 					query.append(Where_Condition);
@@ -113,19 +125,95 @@ public class DBUtility {
 				query.append(classNumber);
 			}
 		}
-			if (id != null && id != 0) {
-				if (!query.toString().contains(Where_Condition)) {
-					query.append(Where_Condition);
-				} else {
-					query.append(" AND ");
-				}
-				query.append("ID=");
-				query.append(id);
+		if (id != null && id != 0) {
+			if (!query.toString().contains(Where_Condition)) {
+				query.append(Where_Condition);
+			} else {
+				query.append(" AND ");
 			}
-			query.append(";");
-			return query.toString();		
+			query.append("ID=");
+			query.append(id);
+		}
+		query.append(";");
+		return query.toString();
 	}
 
+	public static void insertStudents(List<Student> students) {
+		PreparedStatement preparedStatement = null;
+		Connection connection = null;
+		try {
+			connection = getDBConnection();
+			connection.setAutoCommit(false);
+			preparedStatement = connection
+					.prepareStatement("INSERT INTO STUDENT(ID,NAME,CLASS,ADMISSIONYEAR,ACTIVE) VALUES(?,?,?,?,?);");
+			for (Student student : students) {
+				preparedStatement.setInt(1, student.getId());
+				preparedStatement.setString(2, student.getName());
+				preparedStatement.setInt(3, student.getClassNumber());
+				preparedStatement.setInt(4, student.getAdmissionYear());
+				preparedStatement.setBoolean(5, student.isActive());
+				preparedStatement.executeUpdate();
+			}
+			connection.commit();
+		} catch (SQLException e) {
+			e.printStackTrace();
+		} finally {
+			try {
+				preparedStatement.close();
+			} catch (SQLException e) {
+				e.printStackTrace();
+			}
+		}
+	}
+
+	public static void inactiveStudent(int id) {
+		PreparedStatement preparedStatement = null;
+		Connection connection = null;
+		try {
+			connection = getDBConnection();
+			//connection.setAutoCommit(false);
+			preparedStatement = connection
+					.prepareStatement("UPDATE STUDENT set ACTIVE = ? where ID="
+							+ id);
+			preparedStatement.setBoolean(1, false);
+			preparedStatement.executeUpdate();
+			//connection.commit();
+		} catch (SQLException e) {
+			e.printStackTrace();
+		} finally {
+			try {
+				preparedStatement.close();
+				//connection.close();
+			} catch (SQLException e) {
+				e.printStackTrace();
+			}
+		}
+	}
+	public static void updateStudent(int id) {
+		PreparedStatement preparedStatement = null;
+		Connection connection = null;
+		try {
+			List<Student> students = getStudents(buildQuery(null, false, null,null, id));
+			int classNumber  = students.get(0).getClassNumber();
+			connection = getDBConnection();
+			//connection.setAutoCommit(false);
+			preparedStatement = connection
+					.prepareStatement("UPDATE STUDENT set CLASS = ? where ID="
+							+ id);
+			preparedStatement.setInt(1, classNumber+1);
+			preparedStatement.executeUpdate();
+			//connection.commit();
+		} catch (SQLException e) {
+			e.printStackTrace();
+		} finally {
+			try {
+				preparedStatement.close();
+				//connection.close();
+			} catch (SQLException e) {
+				e.printStackTrace();
+			}
+		}
+	}
 	public static void main(String[] args) {
 		try {
 
@@ -152,8 +240,7 @@ public class DBUtility {
 			// statement.executeUpdate(sql2);
 			// statement.executeUpdate(sql3);
 			// System.out.println("EXECUTED");
-			// System.out.println(getStudents(buildQuery(null, false, null,
-			// 0)));
+			//System.out.println(getStudents(buildQuery("1,2", false, null,null, 0)));
 		} catch (Exception exception) {
 			exception.printStackTrace();
 		}

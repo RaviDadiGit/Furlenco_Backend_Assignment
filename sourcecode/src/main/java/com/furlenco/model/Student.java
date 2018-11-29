@@ -1,13 +1,12 @@
 package com.furlenco.model;
 
-import java.util.Date;
 
 public class Student {
 	private int id;
 	private String name;
 	private int classNumber;
 	private boolean active;
-	private String admissionYear;
+	private int admissionYear;
 
 	public int getId() {
 		return id;
@@ -41,11 +40,11 @@ public class Student {
 		this.active = active;
 	}
 
-	public String getAdmissionYear() {
+	public int getAdmissionYear() {
 		return admissionYear;
 	}
 
-	public void setAdmissionYear(String admissionYear) {
+	public void setAdmissionYear(int admissionYear) {
 		this.admissionYear = admissionYear;
 	}
 
@@ -54,6 +53,6 @@ public class Student {
 		return "Student [id=" + id + ", name=" + name + ", classNumber="
 				+ classNumber + ", active=" + active + ", admissionYear="
 				+ admissionYear + "]";
-
 	}
+
 }
